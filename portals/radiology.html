@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Radiology Portal</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🔬 Radiology Portal</h2>
+            <div class="actions">
+                <span id="userName" style="margin-right:12px;font-weight:500;color:var(--gray-700)"></span>
+                <button class="btn" id="refreshBtn">🔄 Refresh</button>
+                <button class="btn btn-secondary" id="logoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card warning">
+                <div class="stat-card-label">Pending Orders</div>
+                <div class="stat-card-value" id="pendingOrders">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-card-label">Completed Today</div>
+                <div class="stat-card-value" id="completedToday">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Total Orders</div>
+                <div class="stat-card-value" id="totalOrders">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h3>Incoming Orders</h3>
+            </div>
+            <div id="ordersList" class="list"></div>
+        </div>
+
+        <div class="card" id="uploadCard" style="display:none">
+            <div class="section-header">
+                <h3>Upload Images & Report</h3>
+            </div>
+
+            <div class="info-box primary" id="selectedOrderInfo">
+                <div class="info-box-icon">ℹ️</div>
+                <div id="selectedOrder"></div>
+            </div>
+
+            <div class="detail-card" id="studiesInfo"></div>
+
+            <div class="form-group">
+                <label>Upload Images (JPG, PNG)</label>
+                <div class="file-upload" id="fileUploadZone">
+                    <p style="font-size:3rem;margin-bottom:12px">📷</p>
+                    <p style="font-size:1.125rem;font-weight:600;margin-bottom:8px">Click or drag images here</p>
+                    <p style="font-size:0.875rem;color:var(--gray-500)">Max 5MB per image • Multiple images allowed</p>
+                    <input type="file" id="imageInput" accept="image/jpeg,image/png" multiple />
+                </div>
+            </div>
+
+            <div id="imagePreview" class="image-gallery"></div>
+
+            <div class="form-group">
+                <label>Radiology Report *</label>
+                <textarea id="report" class="input" rows="10"
+                    placeholder="Enter detailed radiology report..."></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" id="cancelUpload">❌ Cancel</button>
+                <button class="btn btn-success" id="submitReport">✅ Complete & Send Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../app.js"></script>
+
+    <script>
+        (async function () {
+            const userStr = sessionStorage.getItem('user');
+            if (!userStr) {
+                alert('⚠️ Please sign in first');
+                location.href = '../index.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            if (user.role !== 'radiology' && user.role !== 'admin') {
+                alert('⚠️ Unauthorized');
+                location.href = '../index.html';
+                return;
+            }
+
+            document.getElementById('userName').textContent = `👤 ${user.full_name}`;
+
+            let orders = [];
+            let currentOrder = null;
+            let uploadedImages = [];
+
+            await loadOrders();
+            await updateStats();
+
+            async function loadOrders() {
+                const allOrders = await App.readJSON('radiology_orders');
+                orders = allOrders.filter(o => o.center_id === user.id || !o.center_id);
+                renderOrders();
+            }
+
+            async function updateStats() {
+                const today = new Date().toISOString().split('T')[0];
+                const pending = orders.filter(o => o.status === 'in_progress').length;
+                const completed = orders.filter(o =>
+                    o.status === 'ready' && o.completed_at && o.completed_at.startsWith(today)
+                ).length;
+
+                document.getElementById('pendingOrders').textContent = pending;
+                document.getElementById('completedToday').textContent = completed;
+                document.getElementById('totalOrders').textContent = orders.length;
+            }
+
+            function renderOrders() {
+                const container = document.getElementById('ordersList');
+                container.innerHTML = '';
+
+                const pending = orders.filter(o => o.status === 'in_progress');
+
+                if (pending.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔬</div><div class="empty-state-title">No Pending Orders</div><div class="empty-state-description">All orders have been completed</div></div>';
+                    return;
+                }
+
+                pending.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+                    card.style.cursor = 'pointer';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">👤 Patient: ${order.patient_name}</div>
+              <span class="badge badge-warning">${order.status}</span>
+            </div>
+            
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Ordered By</span>
+                <div style="font-weight:500;color:var(--gray-800)">Dr. ${order.doctor_name}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Order Date</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Studies</span>
+                <div style="font-weight:500;color:var(--gray-800)">${order.studies ? order.studies.length : 0} study(s)</div>
+              </div>
+            </div>
+
+            ${order.studies && order.studies.length > 0 ? `
+              <div style="margin-top:16px">
+                <span class="detail-label">Requested Studies:</span>
+                <div style="margin-top:8px">${order.studies.map(s => `<span class="badge badge-info" style="margin:4px">${s.name}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+
+            <div style="margin-top:20px;text-align:right">
+              <button class="btn btn-primary upload-btn">📤 Upload Results</button>
+            </div>
+          `;
+
+                    card.querySelector('.upload-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        openUploadForm(order);
+                    };
+
+                    container.appendChild(card);
+                });
+            }
+
+            function openUploadForm(order) {
+                currentOrder = order;
+                uploadedImages = order.images || [];
+
+                document.getElementById('selectedOrder').innerHTML = `
+          <strong>Order for: ${order.patient_name}</strong><br>
+          Ordered by: Dr. ${order.doctor_name}<br>
+          Order ID: ${order.id}
+        `;
+
+                if (order.studies && order.studies.length > 0) {
+                    const studiesHTML = order.studies.map((study, idx) => `
+            <div class="info-box primary" style="margin-bottom:12px">
+              <div class="info-box-icon">🔬</div>
+              <div>
+                <strong>${idx + 1}. ${study.name}</strong>
+                <p style="margin:4px 0 0 0;color:var(--gray-600)">${study.description}</p>
+              </div>
+            </div>
+          `).join('');
+                    document.getElementById('studiesInfo').innerHTML = studiesHTML;
+                }
+
+                document.getElementById('report').value = order.report || '';
+                renderImagePreview();
+
+                document.getElementById('uploadCard').style.display = 'block';
+                document.getElementById('uploadCard').scrollIntoView({ behavior: 'smooth' });
+            }
+
+            document.getElementById('imageInput').onchange = async (e) => {
+                const files = Array.from(e.target.files);
+
+                for (const file of files) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('⚠️ File too large: ' + file.name);
+                        continue;
+                    }
+
+                    const base64 = await App.imageToBase64(file);
+                    uploadedImages.push(base64);
+                }
+
+                renderImagePreview();
+            };
+
+            function renderImagePreview() {
+                const container = document.getElementById('imagePreview');
+                container.innerHTML = '';
+
+                if (uploadedImages.length === 0) {
+                    container.innerHTML = '<div class="info">No images uploaded yet</div>';
+                    return;
+                }
+
+                uploadedImages.forEach((img, idx) => {
+                    const thumb = document.createElement('div');
+                    thumb.className = 'image-thumb';
+                    thumb.innerHTML = `
+            <img src="${img}" alt="Image ${idx + 1}">
+            <button class="image-remove" onclick="removeImage(${idx})">✕</button>
+          `;
+                    container.appendChild(thumb);
+                });
+            }
+
+            window.removeImage = (idx) => {
+                uploadedImages.splice(idx, 1);
+                renderImagePreview();
+            };
+
+            document.getElementById('cancelUpload').onclick = () => {
+                currentOrder = null;
+                uploadedImages = [];
+                document.getElementById('uploadCard').style.display = 'none';
+                document.getElementById('imageInput').value = '';
+                document.getElementById('report').value = '';
+            };
+
+            document.getElementById('submitReport').onclick = async () => {
+                if (!currentOrder) return;
+
+                const report = document.getElementById('report').value.trim();
+
+                if (!report) {
+                    alert('❌ Please enter a radiology report');
+                    return;
+                }
+
+                if (uploadedImages.length === 0) {
+                    if (!confirm('No images uploaded. Continue anyway?')) return;
+                }
+
+                await App.updateRecord('radiology_orders', currentOrder.id, {
+                    images: uploadedImages,
+                    report: report,
+                    status: 'ready',
+                    completed_at: App.timestamp(),
+                    completed_by: user.full_name
+                });
+
+                await App.addNotification(
+                    'radiology',
+                    `Radiology results ready for ${currentOrder.patient_name}`,
+                    currentOrder.doctor_id
+                );
+
+                await App.logAudit('radiology_completed', user.id, {
+                    orderId: currentOrder.id,
+                    patientId: currentOrder.patient_id
+                });
+
+                App.showToast('Success', 'Report uploaded successfully', 'radiology', 3000);
+
+                currentOrder = null;
+                uploadedImages = [];
+                document.getElementById('uploadCard').style.display = 'none';
+                document.getElementById('imageInput').value = '';
+                document.getElementById('report').value = '';
+
+                await loadOrders();
+                await updateStats();
+            };
+
+            document.getElementById('refreshBtn').onclick = async () => {
+                await loadOrders();
+                await updateStats();
+                App.showToast('Refreshed', 'Orders updated', 'success', 2000);
+            };
+
+            document.getElementById('logoutBtn').onclick = () => {
+                if (confirm('Logout?')) {
+                    sessionStorage.removeItem('user');
+                    location.href = '../index.html';
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Pharmacy Portal</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>💊 Pharmacy Portal</h2>
+            <div class="actions">
+                <span id="userName" style="margin-right:12px;font-weight:500;color:var(--gray-700)"></span>
+                <button class="btn" id="refreshBtn">🔄 Refresh</button>
+                <button class="btn btn-secondary" id="logoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card warning">
+                <div class="stat-card-label">Pending Prescriptions</div>
+                <div class="stat-card-value" id="pendingCount">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-card-label">Dispensed Today</div>
+                <div class="stat-card-value" id="dispensedToday">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Total Prescriptions</div>
+                <div class="stat-card-value" id="totalCount">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" data-tab="pending">⏳ Pending</button>
+                <button class="tab" data-tab="dispensed">✅ Dispensed</button>
+                <button class="tab" data-tab="all">📋 All Orders</button>
+            </div>
+
+            <div id="tab-pending" class="tab-content active">
+                <div class="section-header">
+                    <h3>Pending Prescriptions</h3>
+                </div>
+                <div id="pendingList" class="list"></div>
+            </div>
+
+            <div id="tab-dispensed" class="tab-content">
+                <div class="section-header">
+                    <h3>Dispensed Prescriptions</h3>
+                </div>
+                <div id="dispensedList" class="list"></div>
+            </div>
+
+            <div id="tab-all" class="tab-content">
+                <div class="section-header">
+                    <h3>All Prescriptions</h3>
+                </div>
+                <div id="allList" class="list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../app.js"></script>
+
+    <script>
+        (async function () {
+            const userStr = sessionStorage.getItem('user');
+            if (!userStr) {
+                alert('⚠️ Please sign in first');
+                location.href = '../index.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            if (user.role !== 'pharmacy' && user.role !== 'admin') {
+                alert('⚠️ Unauthorized');
+                location.href = '../index.html';
+                return;
+            }
+
+            document.getElementById('userName').textContent = `👤 ${user.full_name}`;
+
+            let orders = [];
+
+            await loadOrders();
+            await updateStats();
+
+            async function loadOrders() {
+                orders = await App.readJSON('pharmacy_orders');
+                renderOrders();
+            }
+
+            async function updateStats() {
+                const today = new Date().toISOString().split('T')[0];
+                const pending = orders.filter(o => o.status === 'pending').length;
+                const dispensed = orders.filter(o =>
+                    o.status === 'dispensed' && o.dispensed_at && o.dispensed_at.startsWith(today)
+                ).length;
+
+                document.getElementById('pendingCount').textContent = pending;
+                document.getElementById('dispensedToday').textContent = dispensed;
+                document.getElementById('totalCount').textContent = orders.length;
+            }
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    tab.classList.add('active');
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                };
+            });
+
+            function renderOrders() {
+                renderPendingList();
+                renderDispensedList();
+                renderAllList();
+            }
+
+            function renderPendingList() {
+                const container = document.getElementById('pendingList');
+                const pending = orders.filter(o => o.status === 'pending');
+
+                container.innerHTML = '';
+
+                if (pending.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💊</div><div class="empty-state-title">No Pending Prescriptions</div><div class="empty-state-description">All prescriptions have been dispensed</div></div>';
+                    return;
+                }
+
+                pending.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">👤 Patient: ${order.patient_name}</div>
+              <span class="badge badge-warning">${order.status}</span>
+            </div>
+            
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Prescribed By</span>
+                <div style="font-weight:500;color:var(--gray-800)">Dr. ${order.doctor_name}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Date</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Order ID</span>
+                <div style="font-weight:500;color:var(--gray-800)">${order.id}</div>
+              </div>
+            </div>
+
+            <div class="detail-section" style="margin-top:16px">
+              <span class="detail-label">Prescription</span>
+              <pre class="detail-value" style="white-space:pre-wrap;line-height:1.7;max-height:150px;overflow:auto">${order.prescription?.text || 'N/A'}</pre>
+            </div>
+
+            <div style="margin-top:20px;text-align:right">
+              <button class="btn btn-success dispense-btn">✅ Dispense Now</button>
+            </div>
+          `;
+
+                    card.querySelector('.dispense-btn').onclick = async () => {
+                        if (!confirm(`Dispense prescription for ${order.patient_name}?`)) return;
+
+                        await App.updateRecord('pharmacy_orders', order.id, {
+                            status: 'dispensed',
+                            dispensed_by: user.full_name,
+                            dispensed_at: App.timestamp()
+                        });
+
+                        await App.addNotification(
+                            'pharmacy',
+                            `Prescription dispensed for ${order.patient_name}`,
+                            order.doctor_id
+                        );
+
+                        await App.logAudit('prescription_dispensed', user.id, {
+                            orderId: order.id,
+                            patientId: order.patient_id
+                        });
+
+                        App.showToast('Success', 'Prescription dispensed successfully', 'pharmacy', 3000);
+
+                        await loadOrders();
+                        await updateStats();
+                    };
+
+                    container.appendChild(card);
+                });
+            }
+
+            function renderDispensedList() {
+                const container = document.getElementById('dispensedList');
+                const dispensed = orders.filter(o => o.status === 'dispensed').sort((a, b) =>
+                    new Date(b.dispensed_at) - new Date(a.dispensed_at)
+                );
+
+                container.innerHTML = '';
+
+                if (dispensed.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">No Dispensed Prescriptions Yet</div></div>';
+                    return;
+                }
+
+                dispensed.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">👤 Patient: ${order.patient_name}</div>
+              <span class="badge">${order.status}</span>
+            </div>
+            
+            <div class="grid grid-4">
+              <div class="detail-section">
+                <span class="detail-label">Doctor</span>
+                <div style="font-weight:500;color:var(--gray-800)">Dr. ${order.doctor_name}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Prescribed</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Dispensed By</span>
+                <div style="font-weight:500;color:var(--gray-800)">${order.dispensed_by}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Dispensed At</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.dispensed_at)}</div>
+              </div>
+            </div>
+
+            <div class="detail-section" style="margin-top:16px">
+              <span class="detail-label">Prescription</span>
+              <pre class="detail-value" style="white-space:pre-wrap;line-height:1.7">${order.prescription?.text || 'N/A'}</pre>
+            </div>
+          `;
+
+                    container.appendChild(card);
+                });
+            }
+
+            function renderAllList() {
+                const container = document.getElementById('allList');
+                const all = orders.sort((a, b) =>
+                    new Date(b.created_at) - new Date(a.created_at)
+                );
+
+                container.innerHTML = '';
+
+                if (all.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No Prescriptions Yet</div></div>';
+                    return;
+                }
+
+                all.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">👤 Patient: ${order.patient_name}</div>
+              <span class="badge ${order.status === 'dispensed' ? '' : 'badge-warning'}">${order.status}</span>
+            </div>
+            
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Doctor</span>
+                <div style="font-weight:500;color:var(--gray-800)">Dr. ${order.doctor_name}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Prescribed</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Order ID</span>
+                <div style="font-weight:500;color:var(--gray-800)">${order.id}</div>
+              </div>
+            </div>
+
+            ${order.status === 'dispensed' ? `
+              <div class="info-box success" style="margin-top:16px">
+                <div class="info-box-icon">✅</div>
+                <div>
+                  <strong>Dispensed</strong>
+                  <p style="margin:4px 0 0 0">By ${order.dispensed_by} on ${App.formatDate(order.dispensed_at)}</p>
+                </div>
+              </div>
+            ` : ''}
+          `;
+
+                    container.appendChild(card);
+                });
+            }
+
+            document.getElementById('refreshBtn').onclick = async () => {
+                await loadOrders();
+                await updateStats();
+                App.showToast('Refreshed', 'Orders updated', 'success', 2000);
+            };
+
+            document.getElementById('logoutBtn').onclick = () => {
+                if (confirm('Logout?')) {
+                    sessionStorage.removeItem('user');
+                    location.href = '../index.html';
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>

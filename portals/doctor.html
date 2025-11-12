@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Doctor Portal</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>👨‍⚕️ Doctor Portal</h2>
+            <div class="actions">
+                <span id="userName" style="margin-right:12px;font-weight:500;color:var(--gray-700)"></span>
+                <button class="btn notif-badge" id="notifBtn" data-count="0">🔔</button>
+                <button class="btn" id="refreshBtn">🔄 Refresh</button>
+                <button class="btn btn-secondary" id="logoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Notification Panel -->
+        <div id="notificationPanel" class="notification-panel">
+            <div class="notification-panel-header">
+                <div class="notification-panel-title">
+                    🔔 Notifications
+                    <span class="badge" id="notifPanelCount">0</span>
+                </div>
+                <button class="btn btn-secondary" id="closeNotifPanel" style="padding:6px 12px">✕</button>
+            </div>
+
+            <div class="notification-panel-body" id="notificationList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔔</div>
+                    <div class="empty-state-description">No notifications</div>
+                </div>
+            </div>
+
+            <div class="notification-panel-footer">
+                <button class="btn btn-secondary" id="markAllRead" style="width:100%">✅ Mark All as Read</button>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-label">My Patients</div>
+                <div class="stat-card-value" id="myPatientsCount">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-card-label">Pending Results</div>
+                <div class="stat-card-value" id="pendingResults">0</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-card-label">Today's Visits</div>
+                <div class="stat-card-value" id="todayVisits">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h3>My Patients</h3>
+            </div>
+            <div class="form-group">
+                <input class="input" id="search" placeholder="🔍 Search by name..." />
+            </div>
+            <div id="plist" class="list"></div>
+        </div>
+
+        <div class="card" id="patientFileCard" style="display:none">
+            <div class="card-head">
+                <h3 id="pTitle">Complete Patient File</h3>
+                <button class="btn btn-secondary" id="closeFile">✕ Close</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="info">📋 Patient Info</button>
+                <button class="tab" data-tab="visits">🏥 Visits History</button>
+                <button class="tab" data-tab="radiology">🔬 Radiology</button>
+                <button class="tab" data-tab="lab">🧪 Lab Tests</button>
+                <button class="tab" data-tab="pharmacy">💊 Pharmacy</button>
+                <button class="tab" data-tab="newvisit">➕ New Visit</button>
+            </div>
+
+            <!-- Patient Info Tab -->
+            <div id="tab-info" class="tab-content active">
+                <div class="section-header">
+                    <h3>Patient Information</h3>
+                </div>
+                <div id="patientInfo"></div>
+            </div>
+
+            <!-- Visits History Tab -->
+            <div id="tab-visits" class="tab-content">
+                <div class="section-header">
+                    <h3>Visit History</h3>
+                </div>
+                <div id="visitsTimeline" class="timeline"></div>
+            </div>
+
+            <!-- Radiology Tab -->
+            <div id="tab-radiology" class="tab-content">
+                <div class="section-header">
+                    <h3>Radiology Orders</h3>
+                </div>
+                <div id="radiologyList"></div>
+            </div>
+
+            <!-- Lab Tab -->
+            <div id="tab-lab" class="tab-content">
+                <div class="section-header">
+                    <h3>Lab Orders</h3>
+                </div>
+                <div id="labList"></div>
+            </div>
+
+            <!-- Pharmacy Tab -->
+            <div id="tab-pharmacy" class="tab-content">
+                <div class="section-header">
+                    <h3>Prescriptions</h3>
+                </div>
+                <div id="pharmacyList"></div>
+            </div>
+
+            <!-- New Visit Tab -->
+            <div id="tab-newvisit" class="tab-content">
+                <div class="section-header">
+                    <h3>New Visit</h3>
+                </div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Reason for Visit</label>
+                        <input id="reason" class="input" placeholder="Chief complaint" />
+                    </div>
+                    <div class="form-group">
+                        <label>Follow-up Date</label>
+                        <input id="follow_up" type="date" class="input" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Diagnosis</label>
+                    <textarea id="diag" class="input" placeholder="Enter diagnosis details..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Prescription Builder</label>
+                    <div class="card" style="background:var(--bg-secondary);padding:20px">
+                        <div style="display:flex;gap:8px;margin-bottom:12px">
+                            <input id="medSearch" class="input" placeholder="🔍 Search medications..." style="flex:1" />
+                            <button type="button" class="btn" id="addMedBtn">➕ Add</button>
+                        </div>
+                        <div id="medSuggestions" class="suggestions"></div>
+                        <div id="prescriptionList" style="margin-top:12px"></div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-success" id="saveVisit">💾 Save Visit</button>
+                    <button class="btn" id="pdf">📄 Generate Complete PDF</button>
+                    <button class="btn" id="openRadModal">🔬 Order Radiology</button>
+                    <button class="btn" id="openLabModal">🧪 Order Lab Tests</button>
+                    <button class="btn" id="toPh">💊 Send to Pharmacy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div id="imageModal" class="modal">
+        <span class="modal-close" id="closeImageModal">&times;</span>
+        <img id="modalImage" class="modal-content" style="max-width:95%;max-height:95vh;object-fit:contain">
+    </div>
+
+    <!-- Radiology Order Modal -->
+    <div id="radiologyModal" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3>🔬 Order Radiology Studies</h3>
+                <button class="btn btn-secondary" id="closeRadModal">✕ Close</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Search Studies</label>
+                    <input id="radSearch" class="input" placeholder="🔍 Search radiology studies..." />
+                </div>
+                <div id="radSuggestions" class="suggestions"></div>
+
+                <div class="form-group">
+                    <label>Select Radiology Center</label>
+                    <select id="radCenter" class="input">
+                        <option value="">Select Center</option>
+                    </select>
+                </div>
+
+                <div id="selectedRadStudies" style="margin:16px 0"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelRadOrder">Cancel</button>
+                <button class="btn btn-primary" id="submitRadOrder">📤 Send to Radiology</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Order Modal -->
+    <div id="labModal" class="modal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3>🧪 Order Lab Tests</h3>
+                <button class="btn btn-secondary" id="closeLabModal">✕ Close</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Search Tests</label>
+                    <input id="labSearch" class="input" placeholder="🔍 Search lab tests..." />
+                </div>
+                <div id="labSuggestions" class="suggestions"></div>
+
+                <div class="form-group">
+                    <label>Select Lab Center</label>
+                    <select id="labCenter" class="input">
+                        <option value="">Select Center</option>
+                    </select>
+                </div>
+
+                <div id="selectedLabTests" style="margin:16px 0"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelLabOrder">Cancel</button>
+                <button class="btn btn-primary" id="submitLabOrder">📤 Send to Lab</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Radiology Detail Modal -->
+    <div id="radiologyDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>🔬 Radiology Order Details</h3>
+                <button class="btn btn-secondary" id="closeRadDetailModal">✕ Close</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">👤 Patient Information</div>
+                    </div>
+                    <div class="grid grid-3">
+                        <div class="detail-section">
+                            <span class="detail-label">Full Name</span>
+                            <div class="detail-value" id="rad_patient_name">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Date of Birth</span>
+                            <div class="detail-value" id="rad_patient_dob">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Gender</span>
+                            <div class="detail-value" id="rad_patient_gender">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📋 Order Information</div>
+                        <span class="badge" id="rad_order_status">-</span>
+                    </div>
+                    <div class="grid grid-3">
+                        <div class="detail-section">
+                            <span class="detail-label">Order ID</span>
+                            <div class="detail-value" id="rad_order_id">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Order Date</span>
+                            <div class="detail-value" id="rad_order_date">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Radiology Center</span>
+                            <div class="detail-value" id="rad_center_name">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">🔍 Requested Studies</div>
+                    </div>
+                    <div id="rad_studies_list"></div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📝 Radiology Report</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-value" id="rad_report"
+                            style="white-space: pre-wrap; line-height: 1.8; min-height: 100px">
+                            No report available yet.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📷 Images & Scans</div>
+                    </div>
+                    <div id="rad_images_gallery" class="image-gallery">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📷</div>
+                            <div class="empty-state-description">No images uploaded yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="printRadReport">🖨️ Print Complete Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Detail Modal -->
+    <div id="labDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>🧪 Lab Order Details</h3>
+                <button class="btn btn-secondary" id="closeLabDetailModal">✕ Close</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">👤 Patient Information</div>
+                    </div>
+                    <div class="grid grid-3">
+                        <div class="detail-section">
+                            <span class="detail-label">Full Name</span>
+                            <div class="detail-value" id="lab_patient_name">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Date of Birth</span>
+                            <div class="detail-value" id="lab_patient_dob">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Gender</span>
+                            <div class="detail-value" id="lab_patient_gender">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📋 Order Information</div>
+                        <span class="badge" id="lab_order_status">-</span>
+                    </div>
+                    <div class="grid grid-3">
+                        <div class="detail-section">
+                            <span class="detail-label">Order ID</span>
+                            <div class="detail-value" id="lab_order_id">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Order Date</span>
+                            <div class="detail-value" id="lab_order_date">-</div>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-label">Lab Center</span>
+                            <div class="detail-value" id="lab_center_name">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">🔬 Requested Tests</div>
+                    </div>
+                    <div id="lab_tests_list"></div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📝 Lab Report Summary</div>
+                    </div>
+                    <div class="detail-section">
+                        <div class="detail-value" id="lab_report"
+                            style="white-space: pre-wrap; line-height: 1.8; min-height: 100px">
+                            No report available yet.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-card-header">
+                        <div class="detail-card-title">📄 Lab Result Files (PDF)</div>
+                    </div>
+                    <div id="lab_files_container">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📄</div>
+                            <div class="empty-state-description">No PDF files uploaded yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="printLabReport">🖨️ Print Complete Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../medical-database.js"></script>
+    <script src="../app.js"></script>
+
+    <script>
+        (async function () {
+            const userStr = sessionStorage.getItem('user');
+            if (!userStr) {
+                alert('⚠️ Please sign in first');
+                location.href = '../index.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            if (user.role !== 'doctor' && user.role !== 'admin') {
+                alert('⚠️ Unauthorized');
+                location.href = '../index.html';
+                return;
+            }
+
+            document.getElementById('userName').textContent = `👤 Dr. ${user.full_name}`;
+
+            let currentPatient = null;
+            let currentPatientFile = null;
+            let prescriptionItems = [];
+            let myPatients = [];
+
+            // Load initial data
+            await loadPatients();
+            await updateNotifications();
+            await updateStats();
+
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    tab.classList.add('active');
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                };
+            });
+
+            async function loadPatients() {
+                const allPatients = await App.readJSON('patients');
+                myPatients = allPatients.filter(p =>
+                    p.assigned_doctor_id === user.id && p.status === 'active'
+                );
+                renderPatients(myPatients);
+            }
+
+            async function updateNotifications() {
+                const notifs = await App.getNotifications(user.id);
+                const btn = document.getElementById('notifBtn');
+
+                if (notifs.length > 0) {
+                    btn.setAttribute('data-count', notifs.length);
+
+                    // Show toast for new notifications (max 3)
+                    notifs.slice(0, 3).forEach(notif => {
+                        const typeIcons = {
+                            radiology: '🔬',
+                            lab: '🧪',
+                            pharmacy: '💊'
+                        };
+
+                        App.showToast(
+                            `${typeIcons[notif.type] || '🔔'} New Update`,
+                            notif.message,
+                            notif.type,
+                            5000
+                        );
+                    });
+                } else {
+                    btn.removeAttribute('data-count');
+                }
+
+                await renderNotificationPanel();
+            }
+
+            async function renderNotificationPanel() {
+                const allNotifs = await App.getAllNotifications(user.id);
+                const container = document.getElementById('notificationList');
+                const countBadge = document.getElementById('notifPanelCount');
+
+                const unreadCount = allNotifs.filter(n => !n.read).length;
+                countBadge.textContent = unreadCount;
+
+                if (allNotifs.length === 0) {
+                    container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🔔</div>
+              <div class="empty-state-description">No notifications</div>
+            </div>
+          `;
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                allNotifs.forEach(notif => {
+                    const item = document.createElement('div');
+                    item.className = `notification-item ${notif.read ? '' : 'unread'}`;
+
+                    const typeIcons = {
+                        radiology: '🔬',
+                        lab: '🧪',
+                        pharmacy: '💊',
+                        visit: '🏥',
+                        patient: '👤'
+                    };
+
+                    const typeColors = {
+                        radiology: 'radiology',
+                        lab: 'lab',
+                        pharmacy: 'pharmacy'
+                    };
+
+                    item.innerHTML = `
+            <div style="display:flex;gap:12px">
+              <div class="notification-icon ${typeColors[notif.type] || ''}">${typeIcons[notif.type] || '🔔'}</div>
+              <div class="notification-content">
+                <div class="notification-title">${notif.type.charAt(0).toUpperCase() + notif.type.slice(1)} Update</div>
+                <div class="notification-message">${notif.message}</div>
+                <div class="notification-time">🕐 ${App.getRelativeTime(notif.created_at)}</div>
+                ${!notif.read ? `
+                  <div class="notification-actions">
+                    <button class="btn btn-sm mark-read-btn" style="padding:6px 12px;font-size:0.8125rem">✅ Mark as Read</button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+
+                    if (!notif.read) {
+                        const markReadBtn = item.querySelector('.mark-read-btn');
+                        markReadBtn.onclick = async (e) => {
+                            e.stopPropagation();
+                            await App.markNotificationRead(notif.id);
+                            await updateNotifications();
+                        };
+                    }
+
+                    item.onclick = async () => {
+                        await App.markNotificationRead(notif.id);
+                        await updateNotifications();
+                        document.getElementById('notificationPanel').classList.remove('active');
+
+                        if (currentPatient) {
+                            if (notif.type === 'radiology') {
+                                document.querySelector('[data-tab="radiology"]')?.click();
+                            } else if (notif.type === 'lab') {
+                                document.querySelector('[data-tab="lab"]')?.click();
+                            } else if (notif.type === 'pharmacy') {
+                                document.querySelector('[data-tab="pharmacy"]')?.click();
+                            }
+                        }
+                    };
+
+                    container.appendChild(item);
+                });
+            }
+
+            document.getElementById('notifBtn').onclick = () => {
+                const panel = document.getElementById('notificationPanel');
+                panel.classList.toggle('active');
+            };
+
+            document.getElementById('closeNotifPanel').onclick = () => {
+                document.getElementById('notificationPanel').classList.remove('active');
+            };
+
+            document.getElementById('markAllRead').onclick = async () => {
+                await App.markAllNotificationsRead(user.id);
+                await updateNotifications();
+                App.showToast('Success', 'All notifications marked as read', 'success');
+            };
+
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('notificationPanel');
+                const btn = document.getElementById('notifBtn');
+
+                if (!panel.contains(e.target) && !btn.contains(e.target)) {
+                    panel.classList.remove('active');
+                }
+            });
+
+            setInterval(async () => {
+                const oldCount = (await App.getNotifications(user.id)).length;
+                await updateNotifications();
+                const newCount = (await App.getNotifications(user.id)).length;
+
+                if (newCount > oldCount) {
+                    await updateStats();
+                    if (currentPatient) {
+                        await openPatient(currentPatient.id);
+                    }
+                }
+            }, 30000);
+
+            async function updateStats() {
+                const visits = await App.readJSON('visits');
+                const radOrders = await App.readJSON('radiology_orders');
+                const labOrders = await App.readJSON('lab_orders');
+
+                const today = new Date().toISOString().split('T')[0];
+                const todayVisits = visits.filter(v => v.created_at.startsWith(today) && v.doctor_id === user.id).length;
+
+                const pendingRad = radOrders.filter(r => r.doctor_id === user.id && r.status !== 'ready').length;
+                const pendingLab = labOrders.filter(l => l.doctor_id === user.id && l.status !== 'ready').length;
+
+                document.getElementById('myPatientsCount').textContent = myPatients.length;
+                document.getElementById('pendingResults').textContent = pendingRad + pendingLab;
+                document.getElementById('todayVisits').textContent = todayVisits;
+            }
+
+            document.getElementById('refreshBtn').onclick = async () => {
+                await loadPatients();
+                await updateNotifications();
+                await updateStats();
+                if (currentPatient) {
+                    await openPatient(currentPatient.id);
+                }
+                App.showToast('Refreshed', 'All data has been updated', 'success', 2000);
+            };
+
+            function renderPatients(list) {
+                const listEl = document.getElementById('plist');
+                listEl.innerHTML = '';
+
+                if (list.length === 0) {
+                    listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-description">No patients assigned yet</div></div>';
+                    return;
+                }
+
+                list.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = 'patient-card';
+
+                    card.innerHTML = `
+            <div class="card-head">
+              <div>
+                <strong style="font-size:1.125rem;color:var(--gray-900)">${p.basic_info.name}</strong>
+              </div>
+              <span class="badge">${p.status}</span>
+            </div>
+            <div class="grid grid-4" style="margin-top:12px">
+              <div class="detail-section">
+                <span class="detail-label">DOB</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDateShort(p.basic_info.dob) || '-'}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Gender</span>
+                <div style="font-weight:500;color:var(--gray-800)">${p.basic_info.gender || '-'}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Phone</span>
+                <div style="font-weight:500;color:var(--gray-800)">${p.basic_info.phone || '-'}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Last Update</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDateShort(new Date(p.created_at))}</div>
+              </div>
+            </div>
+          `;
+
+                    card.onclick = () => openPatient(p.id);
+                    listEl.appendChild(card);
+                });
+            }
+
+            document.getElementById('search').oninput = (e) => {
+                const query = e.target.value.toLowerCase();
+                const filtered = myPatients.filter(p =>
+                    p.basic_info.name.toLowerCase().includes(query)
+                );
+                renderPatients(filtered);
+            };
+
+            document.getElementById('closeFile').onclick = () => {
+                document.getElementById('patientFileCard').style.display = 'none';
+                currentPatient = null;
+                currentPatientFile = null;
+            };
+
+            async function openPatient(patientId) {
+                currentPatientFile = await App.getPatientFile(patientId);
+                if (!currentPatientFile) return;
+
+                currentPatient = currentPatientFile.patient;
+
+                document.getElementById('pTitle').textContent = `${currentPatient.basic_info.name}'s Complete File`;
+
+                renderPatientInfo();
+                renderVisitsHistory();
+                await renderRadiologyOrders();
+                await renderLabOrders();
+                await renderPharmacyOrders();
+
+                document.getElementById('patientFileCard').style.display = 'block';
+                document.getElementById('patientFileCard').scrollIntoView({ behavior: 'smooth' });
+            }
+
+            function renderPatientInfo() {
+                const p = currentPatient;
+                const info = document.getElementById('patientInfo');
+                info.innerHTML = `
+          <div class="grid grid-3">
+            <div class="detail-section">
+              <span class="detail-label">Full Name</span>
+              <div class="detail-value">${p.basic_info.name}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Date of Birth</span>
+              <div class="detail-value">${App.formatDateShort(p.basic_info.dob) || '-'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Gender</span>
+              <div class="detail-value">${p.basic_info.gender || '-'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Phone</span>
+              <div class="detail-value">${p.basic_info.phone || '-'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Address</span>
+              <div class="detail-value">${p.basic_info.address || '-'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Allergies</span>
+              <div class="detail-value" style="border-left-color:var(--danger);font-weight:600">${p.basic_info.allergies || 'None'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Insurance</span>
+              <div class="detail-value">${p.basic_info.insurance || 'None'}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Patient ID</span>
+              <div class="detail-value">${p.id}</div>
+            </div>
+            <div class="detail-section">
+              <span class="detail-label">Status</span>
+              <div class="detail-value"><span class="badge">${p.status}</span></div>
+            </div>
+          </div>
+          ${p.basic_info.notes ? `
+            <div class="info-box primary" style="margin-top:20px">
+              <div class="info-box-icon">📝</div>
+              <div><strong>Notes:</strong> ${p.basic_info.notes}</div>
+            </div>
+          ` : ''}
+        `;
+            }
+
+            function renderVisitsHistory() {
+                const visits = currentPatientFile.visits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const container = document.getElementById('visitsTimeline');
+
+                if (visits.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏥</div><div class="empty-state-description">No visits recorded yet</div></div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                visits.forEach((v, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'timeline-item';
+                    item.innerHTML = `
+            <div class="timeline-date">Visit ${visits.length - idx} • ${App.formatDate(v.created_at)}</div>
+            <div class="timeline-title">Dr. ${v.doctor_name}</div>
+            <div class="timeline-content">
+              ${v.reason ? `<p><strong>Reason:</strong> ${v.reason}</p>` : ''}
+              ${v.diagnosis?.text ? `<p><strong>Diagnosis:</strong> ${v.diagnosis.text}</p>` : ''}
+              ${v.prescription?.text ? `<div style="margin-top:12px"><strong>Prescription:</strong><pre style="background:var(--gray-50);padding:12px;border-radius:var(--radius);margin-top:8px;white-space:pre-wrap">${v.prescription.text}</pre></div>` : ''}
+              ${v.follow_up_date ? `<p><strong>Follow-up:</strong> ${App.formatDateShort(v.follow_up_date)}</p>` : ''}
+            </div>
+          `;
+                    container.appendChild(item);
+                });
+            }
+
+            async function renderRadiologyOrders() {
+                const orders = currentPatientFile.radiology_orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const container = document.getElementById('radiologyList');
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔬</div><div class="empty-state-description">No radiology orders yet</div></div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                orders.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+                    card.style.cursor = 'pointer';
+
+                    const statusClass = order.status === 'ready' ? '' : 'badge-warning';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">Order ${order.id}</div>
+              <span class="badge ${statusClass}">${order.status}</span>
+            </div>
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Date</span>
+                <div style="font-weight:500">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Center</span>
+                <div style="font-weight:500">${order.center_name || 'N/A'}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Studies</span>
+                <div style="font-weight:500">${order.studies ? order.studies.length : 0} study(s)</div>
+              </div>
+            </div>
+            ${order.status === 'ready' ? '<div class="info-box success" style="margin-top:12px"><div class="info-box-icon">✅</div><div>Results ready - Click to view</div></div>' : ''}
+          `;
+
+                    card.onclick = () => viewRadiologyDetail(order);
+                    container.appendChild(card);
+                });
+            }
+
+            function viewRadiologyDetail(order) {
+                document.getElementById('rad_patient_name').textContent = currentPatient.basic_info.name;
+                document.getElementById('rad_patient_dob').textContent = App.formatDateShort(currentPatient.basic_info.dob);
+                document.getElementById('rad_patient_gender').textContent = currentPatient.basic_info.gender;
+                document.getElementById('rad_order_id').textContent = order.id;
+                document.getElementById('rad_order_date').textContent = App.formatDate(order.created_at);
+                document.getElementById('rad_center_name').textContent = order.center_name || 'N/A';
+                document.getElementById('rad_order_status').textContent = order.status;
+                document.getElementById('rad_order_status').className = `badge ${order.status === 'ready' ? '' : 'badge-warning'}`;
+
+                const studiesList = document.getElementById('rad_studies_list');
+                if (order.studies && order.studies.length > 0) {
+                    studiesList.innerHTML = order.studies.map((s, idx) => `
+            <div class="info-box primary" style="margin-bottom:8px">
+              <div class="info-box-icon">🔬</div>
+              <div><strong>${idx + 1}. ${s.name}</strong><br><span style="color:var(--gray-600)">${s.description}</span></div>
+            </div>
+          `).join('');
+                }
+
+                document.getElementById('rad_report').textContent = order.report || 'No report available yet.';
+
+                const gallery = document.getElementById('rad_images_gallery');
+                if (order.images && order.images.length > 0) {
+                    gallery.innerHTML = '';
+                    order.images.forEach(img => {
+                        const thumb = document.createElement('div');
+                        thumb.className = 'image-thumb';
+                        thumb.innerHTML = `<img src="${img}" alt="Radiology Image">`;
+                        thumb.onclick = () => {
+                            document.getElementById('modalImage').src = img;
+                            document.getElementById('imageModal').classList.add('active');
+                        };
+                        gallery.appendChild(thumb);
+                    });
+                } else {
+                    gallery.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📷</div><div class="empty-state-description">No images uploaded yet</div></div>';
+                }
+
+                document.getElementById('radiologyDetailModal').classList.add('active');
+            }
+
+            document.getElementById('closeRadDetailModal').onclick = () => {
+                document.getElementById('radiologyDetailModal').classList.remove('active');
+            };
+
+            document.getElementById('closeImageModal').onclick = () => {
+                document.getElementById('imageModal').classList.remove('active');
+            };
+
+            document.getElementById('printRadReport').onclick = async () => {
+                if (!currentPatient) return;
+
+                const orderId = document.getElementById('rad_order_id').textContent;
+                const order = currentPatientFile.radiology_orders.find(o => o.id === orderId);
+                if (!order) return;
+
+                const settings = await App.getSettings();
+
+                let studiesHTML = '';
+                if (order.studies && order.studies.length > 0) {
+                    studiesHTML = order.studies.map((s, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td><strong>${s.name}</strong></td>
+              <td>${s.category}</td>
+              <td>${s.description}</td>
+            </tr>
+          `).join('');
+                }
+
+                const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Radiology Report - ${currentPatient.basic_info.name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; color: #1f2937; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #10b981; padding-bottom: 24px; }
+    .header h1 { color: #10b981; margin: 0; font-size: 32px; }
+    h2 { color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    table th { background: #d1fae5; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #10b981; }
+    table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+    .report-box { background: #d1fae5; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔬 Radiology Report</h1>
+    <p><strong>${settings?.clinic_name || 'Medical Clinic'}</strong></p>
+    <p>Report generated on: ${App.formatDate(App.timestamp())}</p>
+  </div>
+
+  <h2>Patient Information</h2>
+  <table>
+    <tr><td style="width:200px"><strong>Full Name</strong></td><td>${currentPatient.basic_info.name}</td></tr>
+    <tr><td><strong>Date of Birth</strong></td><td>${App.formatDateShort(currentPatient.basic_info.dob)}</td></tr>
+    <tr><td><strong>Gender</strong></td><td>${currentPatient.basic_info.gender}</td></tr>
+    <tr><td><strong>Patient ID</strong></td><td>${currentPatient.id}</td></tr>
+  </table>
+
+  <h2>Order Information</h2>
+  <table>
+    <tr><td style="width:200px"><strong>Order ID</strong></td><td>${order.id}</td></tr>
+    <tr><td><strong>Order Date</strong></td><td>${App.formatDate(order.created_at)}</td></tr>
+    <tr><td><strong>Radiology Center</strong></td><td>${order.center_name || 'N/A'}</td></tr>
+    <tr><td><strong>Ordered By</strong></td><td>Dr. ${order.doctor_name}</td></tr>
+    <tr><td><strong>Status</strong></td><td><strong style="color:#10b981">${order.status.toUpperCase()}</strong></td></tr>
+    ${order.completed_at ? `<tr><td><strong>Completed</strong></td><td>${App.formatDate(order.completed_at)} by ${order.completed_by}</td></tr>` : ''}
+  </table>
+
+  <h2>Requested Studies</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Study Name</th>
+        <th>Category</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${studiesHTML}
+    </tbody>
+  </table>
+
+  <h2>Radiology Report</h2>
+  <div class="report-box">
+    <pre style="white-space:pre-wrap;margin:0;line-height:1.8">${order.report || 'No report available.'}</pre>
+  </div>
+
+  ${order.images && order.images.length > 0 ? `
+    <h2>Images (${order.images.length} image(s) available)</h2>
+    <p style="color:#6b7280">Images are available in the digital file.</p>
+  ` : ''}
+
+  <div style="margin-top:60px;border-top:2px solid #e5e7eb;padding-top:24px">
+    <p style="text-align:center;color:#6b7280;font-size:12px">
+      This is an official radiology report<br>
+      Document generated on ${App.formatDate(App.timestamp())}<br>
+      <strong>Confidential Medical Document</strong>
+    </p>
+  </div>
+</body>
+</html>`;
+
+                const fileName = `radiology_report_${currentPatient.basic_info.name.replace(/\s+/g, '_')}_${order.id}.html`;
+                App.savePDF(fileName, html);
+                App.showToast('Success', 'Radiology report downloaded', 'radiology', 2000);
+            };
+
+            async function renderLabOrders() {
+                const orders = currentPatientFile.lab_orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const container = document.getElementById('labList');
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><div class="empty-state-description">No lab orders yet</div></div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                orders.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+                    card.style.cursor = 'pointer';
+
+                    const statusClass = order.status === 'ready' ? '' : 'badge-warning';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">Order ${order.id}</div>
+              <span class="badge ${statusClass}">${order.status}</span>
+            </div>
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Date</span>
+                <div style="font-weight:500">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Center</span>
+                <div style="font-weight:500">${order.center_name || 'N/A'}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Tests</span>
+                <div style="font-weight:500">${order.tests ? order.tests.length : 0} test(s)</div>
+              </div>
+            </div>
+            ${order.status === 'ready' ? '<div class="info-box success" style="margin-top:12px"><div class="info-box-icon">✅</div><div>Results ready - Click to view</div></div>' : ''}
+          `;
+
+                    card.onclick = () => viewLabDetail(order);
+                    container.appendChild(card);
+                });
+            }
+
+            function viewLabDetail(order) {
+                document.getElementById('lab_patient_name').textContent = currentPatient.basic_info.name;
+                document.getElementById('lab_patient_dob').textContent = App.formatDateShort(currentPatient.basic_info.dob);
+                document.getElementById('lab_patient_gender').textContent = currentPatient.basic_info.gender;
+                document.getElementById('lab_order_id').textContent = order.id;
+                document.getElementById('lab_order_date').textContent = App.formatDate(order.created_at);
+                document.getElementById('lab_center_name').textContent = order.center_name || 'N/A';
+                document.getElementById('lab_order_status').textContent = order.status;
+                document.getElementById('lab_order_status').className = `badge ${order.status === 'ready' ? '' : 'badge-warning'}`;
+
+                const testsList = document.getElementById('lab_tests_list');
+                if (order.tests && order.tests.length > 0) {
+                    testsList.innerHTML = order.tests.map((t, idx) => `
+            <div class="info-box warning" style="margin-bottom:8px">
+              <div class="info-box-icon">🧪</div>
+              <div><strong>${idx + 1}. ${t.name}</strong><br><span style="color:var(--gray-600)">${t.category} • Code: ${t.code}</span></div>
+            </div>
+          `).join('');
+                }
+
+                document.getElementById('lab_report').textContent = order.report || 'No report available yet.';
+
+                // عرض ملفات PDF
+                const filesContainer = document.getElementById('lab_files_container');
+                if (order.files && order.files.length > 0) {
+                    filesContainer.innerHTML = '';
+                    order.files.forEach((file, idx) => {
+                        const fileCard = document.createElement('div');
+                        fileCard.className = 'detail-card';
+                        fileCard.style.cursor = 'pointer';
+                        fileCard.style.transition = 'all 0.2s ease-in-out';
+
+                        fileCard.innerHTML = `
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="font-size:3rem">📄</div>
+                <div style="flex:1">
+                  <div style="font-weight:600;color:var(--gray-900);margin-bottom:4px">${file.name}</div>
+                  <div style="font-size:0.875rem;color:var(--gray-600)">
+                    Size: ${(file.size / 1024).toFixed(2)} KB • 
+                    Uploaded: ${App.formatDate(file.uploaded_at)}
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button class="btn btn-sm btn-primary view-pdf-btn">👁️ View</button>
+                  <button class="btn btn-sm btn-secondary download-pdf-btn">⬇️ Download</button>
+                </div>
+              </div>
+            `;
+
+                        fileCard.onmouseover = () => {
+                            fileCard.style.borderColor = 'var(--primary)';
+                            fileCard.style.boxShadow = 'var(--shadow-md)';
+                        };
+
+                        fileCard.onmouseout = () => {
+                            fileCard.style.borderColor = 'var(--gray-200)';
+                            fileCard.style.boxShadow = 'none';
+                        };
+
+                        // View PDF in new tab
+                        fileCard.querySelector('.view-pdf-btn').onclick = (e) => {
+                            e.stopPropagation();
+                            const newWindow = window.open();
+                            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <title>${file.name}</title>
+                  <style>
+                    body { margin: 0; padding: 0; overflow: hidden; }
+                    iframe { width: 100vw; height: 100vh; border: none; }
+                  </style>
+                </head>
+                <body>
+                  <iframe src="${file.data}" type="application/pdf"></iframe>
+                </body>
+                </html>
+              `);
+                        };
+
+                        // Download PDF
+                        fileCard.querySelector('.download-pdf-btn').onclick = (e) => {
+                            e.stopPropagation();
+                            const link = document.createElement('a');
+                            link.href = file.data;
+                            link.download = file.name;
+                            link.click();
+                            App.showToast('Downloaded', `${file.name} downloaded successfully`, 'success', 2000);
+                        };
+
+                        filesContainer.appendChild(fileCard);
+                    });
+                } else {
+                    filesContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><div class="empty-state-description">No PDF files uploaded yet</div></div>';
+                }
+
+                document.getElementById('labDetailModal').classList.add('active');
+            }
+
+            document.getElementById('closeLabDetailModal').onclick = () => {
+                document.getElementById('labDetailModal').classList.remove('active');
+            };
+
+            document.getElementById('printLabReport').onclick = async () => {
+                if (!currentPatient) return;
+
+                const orderId = document.getElementById('lab_order_id').textContent;
+                const order = currentPatientFile.lab_orders.find(o => o.id === orderId);
+                if (!order) return;
+
+                const settings = await App.getSettings();
+
+                let testsHTML = '';
+                if (order.tests && order.tests.length > 0) {
+                    testsHTML = order.tests.map((t, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td><strong>${t.name}</strong></td>
+              <td>${t.category}</td>
+              <td>${t.code}</td>
+            </tr>
+          `).join('');
+                }
+
+                let filesHTML = '';
+                if (order.files && order.files.length > 0) {
+                    filesHTML = '<h3 style="color:#f59e0b;margin-top:30px;border-bottom:2px solid #e5e7eb;padding-bottom:8px">Attached Files</h3>';
+                    order.files.forEach((file, idx) => {
+                        filesHTML += `
+              <div style="background:#fef3c7;padding:16px;border-radius:8px;margin:12px 0;border-left:4px solid #f59e0b">
+                <p style="margin:0;font-weight:600">📄 ${idx + 1}. ${file.name}</p>
+                <p style="margin:4px 0 0 0;color:#92400e;font-size:14px">Size: ${(file.size / 1024).toFixed(2)} KB • Uploaded: ${App.formatDate(file.uploaded_at)}</p>
+              </div>
+            `;
+                    });
+                }
+
+                const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Lab Report - ${currentPatient.basic_info.name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; color: #1f2937; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #f59e0b; padding-bottom: 24px; }
+    .header h1 { color: #f59e0b; margin: 0; font-size: 32px; }
+    h2 { color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    table th { background: #fef3c7; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #f59e0b; }
+    table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+    .report-box { background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🧪 Laboratory Report</h1>
+    <p><strong>${settings?.clinic_name || 'Medical Clinic'}</strong></p>
+    <p>Report generated on: ${App.formatDate(App.timestamp())}</p>
+  </div>
+
+  <h2>Patient Information</h2>
+  <table>
+    <tr><td style="width:200px"><strong>Full Name</strong></td><td>${currentPatient.basic_info.name}</td></tr>
+    <tr><td><strong>Date of Birth</strong></td><td>${App.formatDateShort(currentPatient.basic_info.dob)}</td></tr>
+    <tr><td><strong>Gender</strong></td><td>${currentPatient.basic_info.gender}</td></tr>
+    <tr><td><strong>Patient ID</strong></td><td>${currentPatient.id}</td></tr>
+  </table>
+
+  <h2>Order Information</h2>
+  <table>
+    <tr><td style="width:200px"><strong>Order ID</strong></td><td>${order.id}</td></tr>
+    <tr><td><strong>Order Date</strong></td><td>${App.formatDate(order.created_at)}</td></tr>
+    <tr><td><strong>Lab Center</strong></td><td>${order.center_name || 'N/A'}</td></tr>
+    <tr><td><strong>Ordered By</strong></td><td>Dr. ${order.doctor_name}</td></tr>
+    <tr><td><strong>Status</strong></td><td><strong style="color:#10b981">${order.status.toUpperCase()}</strong></td></tr>
+    ${order.completed_at ? `<tr><td><strong>Completed</strong></td><td>${App.formatDate(order.completed_at)} by ${order.completed_by}</td></tr>` : ''}
+  </table>
+
+  <h2>Requested Tests</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Test Name</th>
+        <th>Category</th>
+        <th>Code</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${testsHTML}
+    </tbody>
+  </table>
+
+  <h2>Lab Report</h2>
+  <div class="report-box">
+    <pre style="white-space:pre-wrap;margin:0;line-height:1.8">${order.report || 'No report available.'}</pre>
+  </div>
+
+  ${filesHTML}
+
+  <div style="margin-top:60px;border-top:2px solid #e5e7eb;padding-top:24px">
+    <p style="text-align:center;color:#6b7280;font-size:12px">
+      This is an official laboratory report<br>
+      Document generated on ${App.formatDate(App.timestamp())}<br>
+      <strong>Confidential Medical Document</strong>
+    </p>
+  </div>
+</body>
+</html>`;
+
+                const fileName = `lab_report_${currentPatient.basic_info.name.replace(/\s+/g, '_')}_${order.id}.html`;
+                App.savePDF(fileName, html);
+                App.showToast('Success', 'Lab report downloaded', 'lab', 2000);
+            };
+
+            async function renderPharmacyOrders() {
+                const orders = currentPatientFile.pharmacy_orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const container = document.getElementById('pharmacyList');
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💊</div><div class="empty-state-description">No prescriptions yet</div></div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                orders.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+
+                    const statusClass = order.status === 'dispensed' ? '' : 'badge-warning';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">Prescription ${order.id}</div>
+              <span class="badge ${statusClass}">${order.status}</span>
+            </div>
+            <div class="grid grid-2">
+              <div class="detail-section">
+                <span class="detail-label">Date</span>
+                <div style="font-weight:500">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Status</span>
+                <div style="font-weight:500">${order.status === 'dispensed' ? `Dispensed on ${App.formatDateShort(order.dispensed_at)}` : 'Pending'}</div>
+              </div>
+            </div>
+            <div class="detail-section" style="margin-top:12px">
+              <span class="detail-label">Prescription</span>
+              <pre class="detail-value" style="white-space:pre-wrap;line-height:1.7">${order.prescription?.text || 'N/A'}</pre>
+            </div>
+          `;
+
+                    container.appendChild(card);
+                });
+            }
+
+            // Prescription Builder
+            document.getElementById('medSearch').oninput = (e) => {
+                const query = e.target.value;
+                const results = MedicalDatabase.searchMedications(query);
+                const container = document.getElementById('medSuggestions');
+
+                if (results.length > 0) {
+                    container.innerHTML = '';
+                    container.classList.add('active');
+                    results.forEach(med => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.innerHTML = `
+              <div class="suggestion-name">${med.name}</div>
+              <div class="suggestion-meta">${med.category} • ${med.route} • ${med.frequency}</div>
+            `;
+                        item.onclick = () => {
+                            addMedication(med);
+                            document.getElementById('medSearch').value = '';
+                            container.classList.remove('active');
+                        };
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.classList.remove('active');
+                }
+            };
+
+            document.getElementById('addMedBtn').onclick = () => {
+                const search = document.getElementById('medSearch').value.trim();
+                if (search) {
+                    addMedication({
+                        name: search,
+                        category: 'Custom',
+                        route: 'Oral',
+                        frequency: 'As directed',
+                        duration: '7 days',
+                        dose: '1 tablet'
+                    });
+                    document.getElementById('medSearch').value = '';
+                }
+            };
+
+            function addMedication(med) {
+                const dose = prompt('Dose (e.g., 1 tablet, 5ml):', med.dose || '1 tablet') || '1 tablet';
+                const duration = prompt('Duration (e.g., 7 days, 2 weeks):', med.duration || '7 days') || '7 days';
+
+                const item = { ...med, dose, duration };
+                prescriptionItems.push(item);
+                renderPrescription();
+            }
+
+            function renderPrescription() {
+                const container = document.getElementById('prescriptionList');
+                container.innerHTML = '';
+
+                if (prescriptionItems.length === 0) {
+                    container.innerHTML = '<div class="info">No medications added yet</div>';
+                    return;
+                }
+
+                prescriptionItems.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'prescription-item';
+                    div.innerHTML = `
+            <div class="prescription-item-content">
+              <div class="prescription-item-name">${idx + 1}. ${item.name}</div>
+              <div class="prescription-item-details">
+                ${item.dose} • ${item.route} • ${item.frequency} • ${item.duration}
+              </div>
+            </div>
+            <button class="prescription-item-remove" onclick="removeMedication(${idx})">✕ Remove</button>
+          `;
+                    container.appendChild(div);
+                });
+            }
+
+            window.removeMedication = (idx) => {
+                prescriptionItems.splice(idx, 1);
+                renderPrescription();
+            };
+
+            // Radiology Modal
+            let selectedRadStudies = [];
+            let radiologyCenters = [];
+
+            async function loadRadiologyCenters() {
+                const allUsers = await App.readJSON('users');
+                radiologyCenters = allUsers.filter(u => u.role === 'radiology' && u.status === 'active');
+
+                const select = document.getElementById('radCenter');
+                select.innerHTML = '<option value="">Select Center</option>';
+                radiologyCenters.forEach(center => {
+                    const opt = document.createElement('option');
+                    opt.value = center.id;
+                    opt.textContent = center.full_name + (center.department ? ` - ${center.department}` : '');
+                    select.appendChild(opt);
+                });
+            }
+
+            document.getElementById('openRadModal').onclick = async () => {
+                if (!currentPatient) {
+                    App.showToast('Error', 'Please select a patient first', 'error');
+                    return;
+                }
+                await loadRadiologyCenters();
+                selectedRadStudies = [];
+                renderSelectedRadStudies();
+                document.getElementById('radiologyModal').classList.add('active');
+            };
+
+            document.getElementById('closeRadModal').onclick = () => {
+                document.getElementById('radiologyModal').classList.remove('active');
+            };
+
+            document.getElementById('cancelRadOrder').onclick = () => {
+                document.getElementById('radiologyModal').classList.remove('active');
+            };
+
+            document.getElementById('radSearch').oninput = (e) => {
+                const query = e.target.value;
+                const results = MedicalDatabase.searchRadiology(query);
+                const container = document.getElementById('radSuggestions');
+
+                if (results.length > 0) {
+                    container.innerHTML = '';
+                    container.classList.add('active');
+                    results.forEach(study => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.innerHTML = `
+              <div class="suggestion-name">${study.name}</div>
+              <div class="suggestion-meta">${study.category} • ${study.description}</div>
+            `;
+                        item.onclick = () => {
+                            if (!selectedRadStudies.find(s => s.name === study.name)) {
+                                selectedRadStudies.push(study);
+                                renderSelectedRadStudies();
+                            }
+                            document.getElementById('radSearch').value = '';
+                            container.classList.remove('active');
+                        };
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.classList.remove('active');
+                }
+            };
+
+            function renderSelectedRadStudies() {
+                const container = document.getElementById('selectedRadStudies');
+                if (selectedRadStudies.length === 0) {
+                    container.innerHTML = '<div class="info">No studies selected</div>';
+                    return;
+                }
+
+                container.innerHTML = '<h4 style="margin-bottom:12px;color:var(--gray-700)">Selected Studies:</h4>';
+                selectedRadStudies.forEach((study, idx) => {
+                    const badge = document.createElement('span');
+                    badge.className = 'selected-item';
+                    badge.innerHTML = `${study.name} <button onclick="removeRadStudy(${idx})">✕</button>`;
+                    container.appendChild(badge);
+                });
+            }
+
+            window.removeRadStudy = (idx) => {
+                selectedRadStudies.splice(idx, 1);
+                renderSelectedRadStudies();
+            };
+
+            document.getElementById('submitRadOrder').onclick = async () => {
+                if (!currentPatient) return;
+                if (selectedRadStudies.length === 0) {
+                    App.showToast('Error', 'Please select at least one study', 'error');
+                    return;
+                }
+
+                const centerId = document.getElementById('radCenter').value;
+                if (!centerId) {
+                    App.showToast('Error', 'Please select a radiology center', 'error');
+                    return;
+                }
+
+                const center = radiologyCenters.find(c => c.id === centerId);
+
+                const newOrder = {
+                    id: App.uid('r'),
+                    visit_id: null,
+                    patient_id: currentPatient.id,
+                    patient_name: currentPatient.basic_info.name,
+                    doctor_id: user.id,
+                    doctor_name: user.full_name,
+                    created_at: App.timestamp(),
+                    center_id: centerId,
+                    center_name: center.full_name,
+                    studies: selectedRadStudies,
+                    images: [],
+                    files: [],
+                    report: '',
+                    status: 'in_progress'
+                };
+
+                await App.addRecord('radiology_orders', newOrder);
+                await App.addNotification('radiology', `New radiology order for ${currentPatient.basic_info.name}`, centerId);
+
+                document.getElementById('radiologyModal').classList.remove('active');
+                await openPatient(currentPatient.id);
+                App.showToast('Success', 'Radiology order sent successfully', 'radiology', 3000);
+            };
+
+            // Lab Modal
+            let selectedLabTests = [];
+            let labCenters = [];
+
+            async function loadLabCenters() {
+                const allUsers = await App.readJSON('users');
+                labCenters = allUsers.filter(u => u.role === 'lab' && u.status === 'active');
+
+                const select = document.getElementById('labCenter');
+                select.innerHTML = '<option value="">Select Center</option>';
+                labCenters.forEach(center => {
+                    const opt = document.createElement('option');
+                    opt.value = center.id;
+                    opt.textContent = center.full_name + (center.department ? ` - ${center.department}` : '');
+                    select.appendChild(opt);
+                });
+            }
+
+            document.getElementById('openLabModal').onclick = async () => {
+                if (!currentPatient) {
+                    App.showToast('Error', 'Please select a patient first', 'error');
+                    return;
+                }
+                await loadLabCenters();
+                selectedLabTests = [];
+                renderSelectedLabTests();
+                document.getElementById('labModal').classList.add('active');
+            };
+
+            document.getElementById('closeLabModal').onclick = () => {
+                document.getElementById('labModal').classList.remove('active');
+            };
+
+            document.getElementById('cancelLabOrder').onclick = () => {
+                document.getElementById('labModal').classList.remove('active');
+            };
+
+            document.getElementById('labSearch').oninput = (e) => {
+                const query = e.target.value;
+                const results = MedicalDatabase.searchLabTests(query);
+                const container = document.getElementById('labSuggestions');
+
+                if (results.length > 0) {
+                    container.innerHTML = '';
+                    container.classList.add('active');
+                    results.forEach(test => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        item.innerHTML = `
+              <div class="suggestion-name">${test.name}</div>
+              <div class="suggestion-meta">${test.category} • Code: ${test.code}</div>
+            `;
+                        item.onclick = () => {
+                            if (!selectedLabTests.find(t => t.name === test.name)) {
+                                selectedLabTests.push(test);
+                                renderSelectedLabTests();
+                            }
+                            document.getElementById('labSearch').value = '';
+                            container.classList.remove('active');
+                        };
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.classList.remove('active');
+                }
+            };
+
+            function renderSelectedLabTests() {
+                const container = document.getElementById('selectedLabTests');
+                if (selectedLabTests.length === 0) {
+                    container.innerHTML = '<div class="info">No tests selected</div>';
+                    return;
+                }
+
+                container.innerHTML = '<h4 style="margin-bottom:12px;color:var(--gray-700)">Selected Tests:</h4>';
+                selectedLabTests.forEach((test, idx) => {
+                    const badge = document.createElement('span');
+                    badge.className = 'selected-item';
+                    badge.innerHTML = `${test.name} <button onclick="removeLabTest(${idx})">✕</button>`;
+                    container.appendChild(badge);
+                });
+            }
+
+            window.removeLabTest = (idx) => {
+                selectedLabTests.splice(idx, 1);
+                renderSelectedLabTests();
+            };
+
+            document.getElementById('submitLabOrder').onclick = async () => {
+                if (!currentPatient) return;
+                if (selectedLabTests.length === 0) {
+                    App.showToast('Error', 'Please select at least one test', 'error');
+                    return;
+                }
+
+                const centerId = document.getElementById('labCenter').value;
+                if (!centerId) {
+                    App.showToast('Error', 'Please select a lab center', 'error');
+                    return;
+                }
+
+                const center = labCenters.find(c => c.id === centerId);
+
+                const newOrder = {
+                    id: App.uid('l'),
+                    visit_id: null,
+                    patient_id: currentPatient.id,
+                    patient_name: currentPatient.basic_info.name,
+                    doctor_id: user.id,
+                    doctor_name: user.full_name,
+                    created_at: App.timestamp(),
+                    center_id: centerId,
+                    center_name: center.full_name,
+                    tests: selectedLabTests,
+                    files: [],
+                    report: '',
+                    status: 'in_progress'
+                };
+
+                await App.addRecord('lab_orders', newOrder);
+                await App.addNotification('lab', `New lab order for ${currentPatient.basic_info.name}`, centerId);
+
+                document.getElementById('labModal').classList.remove('active');
+                await openPatient(currentPatient.id);
+                App.showToast('Success', 'Lab order sent successfully', 'lab', 3000);
+            };
+
+            // Save visit
+            document.getElementById('saveVisit').onclick = async () => {
+                if (!currentPatient) {
+                    App.showToast('Error', 'Please select a patient first', 'error');
+                    return;
+                }
+
+                const prescriptionText = prescriptionItems.map((item, idx) =>
+                    `${idx + 1}. ${item.name}\n   ${item.dose} - ${item.route} - ${item.frequency} - Duration: ${item.duration}`
+                ).join('\n\n');
+
+                const newVisit = {
+                    id: App.uid('v'),
+                    patient_id: currentPatient.id,
+                    doctor_id: user.id,
+                    doctor_name: user.full_name,
+                    created_at: App.timestamp(),
+                    reason: document.getElementById('reason').value.trim(),
+                    diagnosis: { text: document.getElementById('diag').value.trim() },
+                    prescription: {
+                        text: prescriptionText,
+                        items: prescriptionItems
+                    },
+                    follow_up_date: document.getElementById('follow_up').value || null,
+                    status: 'open'
+                };
+
+                await App.addRecord('visits', newVisit);
+
+                prescriptionItems = [];
+                renderPrescription();
+                document.getElementById('reason').value = '';
+                document.getElementById('diag').value = '';
+                document.getElementById('follow_up').value = '';
+
+                await openPatient(currentPatient.id);
+                await updateStats();
+                App.showToast('Success', 'Visit saved successfully', 'success', 3000);
+            };
+
+            // Generate PDF
+            document.getElementById('pdf').onclick = async () => {
+                if (!currentPatient) {
+                    App.showToast('Error', 'Please select a patient first', 'error');
+                    return;
+                }
+
+                const settings = await App.getSettings();
+                const p = currentPatient;
+
+                const visits = currentPatientFile.visits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                let visitsHTML = '';
+                if (visits.length > 0) {
+                    visitsHTML = '<h3 style="color:#0891b2;margin-top:30px;border-bottom:2px solid #e5e7eb;padding-bottom:8px">Visit History</h3>';
+                    visits.forEach((v, idx) => {
+                        visitsHTML += `
+              <div style="background:#f9fafb;padding:20px;border-radius:12px;margin:16px 0;border-left:4px solid #0891b2">
+                <p style="margin:0 0 12px 0"><strong style="font-size:1.125rem">Visit ${visits.length - idx} - ${App.formatDate(v.created_at)}</strong></p>
+                <p style="margin:8px 0"><span style="color:#6b7280;font-weight:500">Doctor:</span> Dr. ${v.doctor_name}</p>
+                <p style="margin:8px 0"><span style="color:#6b7280;font-weight:500">Reason:</span> ${v.reason || 'N/A'}</p>
+                <p style="margin:8px 0"><span style="color:#6b7280;font-weight:500">Diagnosis:</span> ${v.diagnosis?.text || 'N/A'}</p>
+                <div style="margin-top:12px">
+                  <p style="margin:8px 0;color:#6b7280;font-weight:500">Prescription:</p>
+                  <pre style="background:white;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px;line-height:1.8;border:1px solid #e5e7eb">${v.prescription?.text || 'N/A'}</pre>
+                </div>
+                ${v.follow_up_date ? `<p style="margin:12px 0 0 0"><span style="color:#6b7280;font-weight:500">Follow-up:</span> ${App.formatDateShort(v.follow_up_date)}</p>` : ''}
+              </div>
+            `;
+                    });
+                }
+
+                const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Complete Medical File - ${p.basic_info.name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; color: #1f2937; }
+    .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #0891b2; padding-bottom: 24px; }
+    .header h1 { color: #0891b2; margin: 0; font-size: 32px; }
+    .header p { margin: 8px 0; color: #6b7280; font-size: 14px; }
+    h2 { color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 40px; font-size: 24px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+    table td:first-child { font-weight: 600; color: #6b7280; width: 180px; }
+    .alert { background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; margin: 16px 0; border-radius: 8px; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${settings?.clinic_name || 'Medical Clinic'}</h1>
+    <p><strong>${settings?.clinic_address || ''}</strong></p>
+    <p>Phone: ${settings?.clinic_phone || ''}</p>
+    <p style="margin-top:16px;font-size:16px"><strong>Complete Medical File</strong></p>
+    <p>Generated on: ${App.formatDate(App.timestamp())}</p>
+  </div>
+
+  <h2>Patient Information</h2>
+  <table>
+    <tr><td>Full Name</td><td><strong style="font-size:18px">${p.basic_info.name}</strong></td></tr>
+    <tr><td>Date of Birth</td><td>${App.formatDateShort(p.basic_info.dob) || 'N/A'}</td></tr>
+    <tr><td>Gender</td><td>${p.basic_info.gender || 'N/A'}</td></tr>
+    <tr><td>Phone</td><td>${p.basic_info.phone || 'N/A'}</td></tr>
+    <tr><td>Address</td><td>${p.basic_info.address || 'N/A'}</td></tr>
+    <tr><td>Insurance</td><td>${p.basic_info.insurance || 'None'}</td></tr>
+    <tr><td>Assigned Doctor</td><td>Dr. ${user.full_name}</td></tr>
+    <tr><td>Patient ID</td><td>${p.id}</td></tr>
+  </table>
+
+  ${p.basic_info.allergies ? `
+    <div class="alert">
+      <strong style="font-size:16px">⚠️ ALLERGIES:</strong> ${p.basic_info.allergies}
+    </div>
+  ` : ''}
+
+  ${visitsHTML}
+
+  <div style="margin-top:60px;page-break-before:always;border-top:2px solid #e5e7eb;padding-top:24px">
+    <p style="text-align:center;color:#6b7280;font-size:12px;line-height:1.8">
+      This is a comprehensive medical file<br>
+      Generated by ${settings?.clinic_name || 'Clinic Management System'}<br>
+      Document generated on ${App.formatDate(App.timestamp())}<br>
+      <strong>Confidential Medical Record</strong>
+    </p>
+  </div>
+</body>
+</html>`;
+
+                const fileName = `complete_file_${p.basic_info.name.replace(/\s+/g, '_')}_${Date.now()}.html`;
+                App.savePDF(fileName, html);
+                App.showToast('Success', 'Complete medical file downloaded', 'success', 3000);
+            };
+
+            document.getElementById('toPh').onclick = async () => {
+                if (!currentPatient) {
+                    App.showToast('Error', 'Please select a patient first', 'error');
+                    return;
+                }
+                if (prescriptionItems.length === 0) {
+                    App.showToast('Error', 'Please add medications to prescription first', 'error');
+                    return;
+                }
+
+                const prescriptionText = prescriptionItems.map((item, idx) =>
+                    `${idx + 1}. ${item.name} - ${item.dose} - ${item.frequency} - ${item.duration}`
+                ).join('\n');
+
+                await App.addRecord('pharmacy_orders', {
+                    id: App.uid('ph'),
+                    visit_id: null,
+                    patient_id: currentPatient.id,
+                    patient_name: currentPatient.basic_info.name,
+                    doctor_id: user.id,
+                    doctor_name: user.full_name,
+                    created_at: App.timestamp(),
+                    prescription: {
+                        text: prescriptionText,
+                        items: prescriptionItems
+                    },
+                    status: 'pending'
+                });
+
+                await App.addNotification('pharmacy', `New prescription for ${currentPatient.basic_info.name}`, null);
+
+                await openPatient(currentPatient.id);
+                App.showToast('Success', 'Prescription sent to pharmacy', 'pharmacy', 3000);
+            };
+
+            document.getElementById('logoutBtn').onclick = () => {
+                if (confirm('Logout?')) {
+                    sessionStorage.removeItem('user');
+                    location.href = '../index.html';
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>

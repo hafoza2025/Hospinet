@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Lab Portal</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🧪 Laboratory Portal</h2>
+            <div class="actions">
+                <span id="userName" style="margin-right:12px;font-weight:500;color:var(--gray-700)"></span>
+                <button class="btn" id="refreshBtn">🔄 Refresh</button>
+                <button class="btn btn-secondary" id="logoutBtn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card warning">
+                <div class="stat-card-label">Pending Tests</div>
+                <div class="stat-card-value" id="pendingTests">0</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-card-label">Completed Today</div>
+                <div class="stat-card-value" id="completedToday">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-label">Total Orders</div>
+                <div class="stat-card-value" id="totalOrders">0</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h3>Incoming Test Orders</h3>
+            </div>
+            <div id="ordersList" class="list"></div>
+        </div>
+
+        <div class="card" id="uploadCard" style="display:none">
+            <div class="section-header">
+                <h3>Upload Results & Report</h3>
+            </div>
+
+            <div class="info-box primary" id="selectedOrderInfo">
+                <div class="info-box-icon">ℹ️</div>
+                <div id="selectedOrder"></div>
+            </div>
+
+            <div class="detail-card" id="testsInfo"></div>
+
+            <div class="form-group">
+                <label>Upload PDF Reports (Multiple files allowed)</label>
+                <div class="file-upload">
+                    <p style="font-size:3rem;margin-bottom:12px">📄</p>
+                    <p style="font-size:1.125rem;font-weight:600;margin-bottom:8px">Click to upload PDF files</p>
+                    <p style="font-size:0.875rem;color:var(--gray-500)">Max 10MB per file</p>
+                    <input type="file" id="pdfInput" accept="application/pdf" multiple />
+                </div>
+            </div>
+
+            <div id="filesList" style="margin:16px 0"></div>
+
+            <div class="form-group">
+                <label>Lab Report Summary *</label>
+                <textarea id="report" class="input" rows="10"
+                    placeholder="Enter detailed lab report summary..."></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" id="cancelUpload">❌ Cancel</button>
+                <button class="btn btn-success" id="submitReport">✅ Complete & Send Results</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../app.js"></script>
+
+    <script>
+        (async function () {
+            const userStr = sessionStorage.getItem('user');
+            if (!userStr) {
+                alert('⚠️ Please sign in first');
+                location.href = '../index.html';
+                return;
+            }
+
+            const user = JSON.parse(userStr);
+            if (user.role !== 'lab' && user.role !== 'admin') {
+                alert('⚠️ Unauthorized');
+                location.href = '../index.html';
+                return;
+            }
+
+            document.getElementById('userName').textContent = `👤 ${user.full_name}`;
+
+            let orders = [];
+            let currentOrder = null;
+            let uploadedFiles = [];
+
+            await loadOrders();
+            await updateStats();
+
+            async function loadOrders() {
+                const allOrders = await App.readJSON('lab_orders');
+                orders = allOrders.filter(o => o.center_id === user.id || !o.center_id);
+                renderOrders();
+            }
+
+            async function updateStats() {
+                const today = new Date().toISOString().split('T')[0];
+                const pending = orders.filter(o => o.status === 'in_progress').length;
+                const completed = orders.filter(o =>
+                    o.status === 'ready' && o.completed_at && o.completed_at.startsWith(today)
+                ).length;
+
+                document.getElementById('pendingTests').textContent = pending;
+                document.getElementById('completedToday').textContent = completed;
+                document.getElementById('totalOrders').textContent = orders.length;
+            }
+
+            function renderOrders() {
+                const container = document.getElementById('ordersList');
+                container.innerHTML = '';
+
+                const pending = orders.filter(o => o.status === 'in_progress');
+
+                if (pending.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><div class="empty-state-title">No Pending Tests</div><div class="empty-state-description">All tests have been completed</div></div>';
+                    return;
+                }
+
+                pending.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'detail-card';
+
+                    card.innerHTML = `
+            <div class="detail-card-header">
+              <div class="detail-card-title">👤 Patient: ${order.patient_name}</div>
+              <span class="badge badge-warning">${order.status}</span>
+            </div>
+            
+            <div class="grid grid-3">
+              <div class="detail-section">
+                <span class="detail-label">Ordered By</span>
+                <div style="font-weight:500;color:var(--gray-800)">Dr. ${order.doctor_name}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Order Date</span>
+                <div style="font-weight:500;color:var(--gray-800)">${App.formatDate(order.created_at)}</div>
+              </div>
+              <div class="detail-section">
+                <span class="detail-label">Tests</span>
+                <div style="font-weight:500;color:var(--gray-800)">${order.tests ? order.tests.length : 0} test(s)</div>
+              </div>
+            </div>
+
+            ${order.tests && order.tests.length > 0 ? `
+              <div style="margin-top:16px">
+                <span class="detail-label">Requested Tests:</span>
+                <div style="margin-top:8px">${order.tests.map(t => `<span class="badge badge-info" style="margin:4px">${t.name}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+
+            <div style="margin-top:20px;text-align:right">
+              <button class="btn btn-primary upload-btn">📤 Upload Results</button>
+            </div>
+          `;
+
+                    card.querySelector('.upload-btn').onclick = () => {
+                        openUploadForm(order);
+                    };
+
+                    container.appendChild(card);
+                });
+            }
+
+            function openUploadForm(order) {
+                currentOrder = order;
+                uploadedFiles = order.files || [];
+
+                document.getElementById('selectedOrder').innerHTML = `
+          <strong>Order for: ${order.patient_name}</strong><br>
+          Ordered by: Dr. ${order.doctor_name}<br>
+          Order ID: ${order.id}
+        `;
+
+                if (order.tests && order.tests.length > 0) {
+                    const testsHTML = order.tests.map((test, idx) => `
+            <div class="info-box warning" style="margin-bottom:12px">
+              <div class="info-box-icon">🧪</div>
+              <div>
+                <strong>${idx + 1}. ${test.name}</strong>
+                <p style="margin:4px 0 0 0;color:var(--gray-600)">${test.category} • Code: ${test.code}</p>
+              </div>
+            </div>
+          `).join('');
+                    document.getElementById('testsInfo').innerHTML = testsHTML;
+                }
+
+                document.getElementById('report').value = order.report || '';
+                renderFilesList();
+
+                document.getElementById('uploadCard').style.display = 'block';
+                document.getElementById('uploadCard').scrollIntoView({ behavior: 'smooth' });
+            }
+
+            document.getElementById('pdfInput').onchange = async (e) => {
+                const files = Array.from(e.target.files);
+
+                for (const file of files) {
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('⚠️ File too large: ' + file.name);
+                        continue;
+                    }
+
+                    if (!file.type.includes('pdf')) {
+                        alert('⚠️ Only PDF files allowed: ' + file.name);
+                        continue;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        uploadedFiles.push({
+                            name: file.name,
+                            data: event.target.result,
+                            size: file.size,
+                            uploaded_at: App.timestamp()
+                        });
+                        renderFilesList();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            function renderFilesList() {
+                const container = document.getElementById('filesList');
+                container.innerHTML = '';
+
+                if (uploadedFiles.length === 0) {
+                    container.innerHTML = '<div class="info">No PDF files uploaded yet</div>';
+                    return;
+                }
+
+                uploadedFiles.forEach((file, idx) => {
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'info-box';
+                    fileCard.innerHTML = `
+            <div class="info-box-icon">📄</div>
+            <div style="flex:1">
+              <strong>${file.name}</strong>
+              <p style="margin:4px 0 0 0;color:var(--gray-600)">${(file.size / 1024).toFixed(2)} KB</p>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="removeFile(${idx})">✕</button>
+          `;
+                    container.appendChild(fileCard);
+                });
+            }
+
+            window.removeFile = (idx) => {
+                uploadedFiles.splice(idx, 1);
+                renderFilesList();
+            };
+
+            document.getElementById('cancelUpload').onclick = () => {
+                currentOrder = null;
+                uploadedFiles = [];
+                document.getElementById('uploadCard').style.display = 'none';
+                document.getElementById('pdfInput').value = '';
+                document.getElementById('report').value = '';
+            };
+
+            document.getElementById('submitReport').onclick = async () => {
+                if (!currentOrder) return;
+
+                const report = document.getElementById('report').value.trim();
+
+                if (!report) {
+                    alert('❌ Please enter a lab report summary');
+                    return;
+                }
+
+                if (uploadedFiles.length === 0) {
+                    if (!confirm('No PDF files uploaded. Continue anyway?')) return;
+                }
+
+                await App.updateRecord('lab_orders', currentOrder.id, {
+                    files: uploadedFiles,
+                    report: report,
+                    status: 'ready',
+                    completed_at: App.timestamp(),
+                    completed_by: user.full_name
+                });
+
+                await App.addNotification(
+                    'lab',
+                    `Lab results ready for ${currentOrder.patient_name}`,
+                    currentOrder.doctor_id
+                );
+
+                await App.logAudit('lab_completed', user.id, {
+                    orderId: currentOrder.id,
+                    patientId: currentOrder.patient_id
+                });
+
+                App.showToast('Success', 'Results uploaded successfully', 'lab', 3000);
+
+                currentOrder = null;
+                uploadedFiles = [];
+                document.getElementById('uploadCard').style.display = 'none';
+                document.getElementById('pdfInput').value = '';
+                document.getElementById('report').value = '';
+
+                await loadOrders();
+                await updateStats();
+            };
+
+            document.getElementById('refreshBtn').onclick = async () => {
+                await loadOrders();
+                await updateStats();
+                App.showToast('Refreshed', 'Orders updated', 'success', 2000);
+            };
+
+            document.getElementById('logoutBtn').onclick = () => {
+                if (confirm('Logout?')) {
+                    sessionStorage.removeItem('user');
+                    location.href = '../index.html';
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>

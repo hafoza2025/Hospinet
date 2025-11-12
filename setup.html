@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>System Setup</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="card" style="max-width:600px;margin:50px auto">
+            <div class="section-header">
+                <h2>🏥 Hospital System Setup</h2>
+                <p>Configure your clinic for the first time</p>
+            </div>
+
+            <div id="setupStatus" style="display:none;margin-bottom:20px"></div>
+
+            <form id="setupForm">
+                <h3>Clinic Information</h3>
+                <div class="form-group">
+                    <label>Clinic Name *</label>
+                    <input type="text" id="clinic_name" class="input" required />
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="tel" id="clinic_phone" class="input" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Address *</label>
+                        <input type="text" id="clinic_address" class="input" required />
+                    </div>
+                </div>
+
+                <h3 style="margin-top:30px">Administrator Account</h3>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="full_name" class="input" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Specialization</label>
+                        <input type="text" id="specialization" class="input" />
+                    </div>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>License Number</label>
+                        <input type="text" id="license_number" class="input" />
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="phone" class="input" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" class="input" />
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" id="username" class="input" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" id="password" class="input" required />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top:30px">
+                    🚀 Initialize System
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+        (async function () {
+            const statusDiv = document.getElementById('setupStatus');
+
+            // عرض رسالة تحميل
+            statusDiv.innerHTML = '<div class="info-box primary"><div class="info-box-icon">⏳</div><div>Checking database connection...</div></div>';
+            statusDiv.style.display = 'block';
+
+            try {
+                // التحقق من وجود مستخدمين
+                const users = await App.readJSON('users');
+
+                if (users && users.length > 0) {
+                    // النظام مُعد بالفعل
+                    statusDiv.innerHTML = '<div class="info-box success"><div class="info-box-icon">✅</div><div><strong>System Already Initialized</strong><br>You will be redirected to login page in 3 seconds...</div></div>';
+
+                    setTimeout(() => {
+                        location.href = 'index.html';
+                    }, 3000);
+
+                    // إخفاء الفورم
+                    document.getElementById('setupForm').style.display = 'none';
+                    return;
+                }
+
+                // النظام جاهز للإعداد
+                statusDiv.innerHTML = '<div class="info-box success"><div class="info-box-icon">✅</div><div><strong>Database Connected</strong><br>Please fill the form below to setup your system</div></div>';
+
+            } catch (error) {
+                console.error('Database check error:', error);
+                statusDiv.innerHTML = '<div class="info-box danger"><div class="info-box-icon">❌</div><div><strong>Database Connection Error</strong><br>Please check your Supabase configuration in config.js<br><small>' + error.message + '</small></div></div>';
+                document.getElementById('setupForm').style.display = 'none';
+                return;
+            }
+
+            // معالجة الفورم
+            document.getElementById('setupForm').onsubmit = async (e) => {
+                e.preventDefault();
+
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Setting up...';
+
+                const data = {
+                    clinic_name: document.getElementById('clinic_name').value.trim(),
+                    clinic_phone: document.getElementById('clinic_phone').value.trim(),
+                    clinic_address: document.getElementById('clinic_address').value.trim(),
+                    full_name: document.getElementById('full_name').value.trim(),
+                    specialization: document.getElementById('specialization').value.trim(),
+                    license_number: document.getElementById('license_number').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    username: document.getElementById('username').value.trim(),
+                    password: document.getElementById('password').value
+                };
+
+                try {
+                    // تسجيل الأدمن
+                    await App.registerAdmin(data);
+
+                    statusDiv.innerHTML = '<div class="info-box success"><div class="info-box-icon">🎉</div><div><strong>System Initialized Successfully!</strong><br>Redirecting to login page...</div></div>';
+
+                    // الانتقال لصفحة تسجيل الدخول
+                    setTimeout(() => {
+                        location.href = 'index.html';
+                    }, 2000);
+
+                } catch (err) {
+                    console.error('Setup error:', err);
+                    statusDiv.innerHTML = '<div class="info-box danger"><div class="info-box-icon">❌</div><div><strong>Setup Failed</strong><br>' + err.message + '</div></div>';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 Initialize System';
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>
